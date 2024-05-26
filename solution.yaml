@@ -1,0 +1,67 @@
+prompt_folder: data/prompts
+
+type: GraphBasedPipeline
+
+modules:
+  - name: BatchLoader
+    id: prompt_list
+    params:
+      key: prompt_folder
+      target_exts:
+        - .json
+
+  - name: LoadSinglePromptFile
+    id: load_prompt
+    params: {}
+
+  - name: StableDiffusionImageGenerator
+    id: image_gen
+    params:
+      enable_attention_slicing: false
+      model: SG161222/Realistic_Vision_V5.1_noVAE
+      n_infer_steps: 100
+      device: cuda:0
+      negative_prompt: (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime:1.4), text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck
+      guidance_scale: 7.5
+      image_width: 512
+      image_height: 512
+
+  - name: SaveImageController
+    id: save_img
+    params:
+      sub_path: image
+
+  - name: VOCClasses
+    id: voc_classes
+    params: {}
+
+  - name: BLIPClassifier
+    id: blip_classifier
+    params: 
+      device: cuda:0
+
+  - name: ClipSegSegmentor
+    id: clipseg_advance
+    params:
+      mask_threshold: .35
+      uncertainty_threshold: .35
+      device: cuda:0
+      interpolation_mode: bilinear
+      checkpoint: CIDAS/clipseg-rd64-refined
+
+  - name: SavePascalVOCSegmentation
+    id: save_mask
+    params:
+      sub_path: mask
+      ext: .png
+
+
+connections:
+  - out: prompt_list.index_file
+    in: load_prompt.index
+
+  - out: load_prompt.prompt
+    in: image_gen.prompt
+
+  - out: image_gen.sd_response
+    in: save_img.image
