@@ -32,7 +32,7 @@ def main():
         cfg["modules"],
         cfg["connections"],
         only_check=False,
-        visualize=False,
+        visualize=None,
     )
 
     logger.info("[Constructing pipeline] Done!")

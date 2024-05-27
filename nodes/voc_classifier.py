@@ -10,6 +10,8 @@ logger = structlog.getLogger(__name__)
 
 class VOCMultiLabelClassifier(torch.nn.Module):
     def __init__(self, feature_extractor, num_classes = 20):
+        super().__init__()
+
         self.feature_extractor = feature_extractor
         self.num_classes = num_classes
         self.classifier = torch.nn.Sequential(
@@ -86,8 +88,8 @@ class VOCClassifier(IImageClassifier):
 
     @torch.no_grad()
     def __call__(self, img: ImageWrapper, *args, **kwargs) -> TextualPrompt:
-        img = self.clip_preprocess(img).unsqueeze(0).to(self.inference_device)
-        logits = self.classifier(img)
+        inp = self.clip_preprocess(img.pil).unsqueeze(0).to(self.inference_device)
+        logits = self.classifier(inp)
         act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
         return TextualPrompt(
             labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
