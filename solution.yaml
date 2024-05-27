@@ -18,11 +18,11 @@ modules:
     id: image_gen
     params:
       enable_attention_slicing: false
-      model: SG161222/Realistic_Vision_V5.1_noVAE
+      model: runwayml/stable-diffusion-v1-5
       n_infer_steps: 100
       device: cuda:0
       negative_prompt: (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime:1.4), text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck
-      guidance_scale: 7.5
+      guidance_scale: 8.0
       image_width: 512
       image_height: 512
 
@@ -31,17 +31,13 @@ modules:
     params:
       sub_path: image
 
-  - name: VOCClasses
-    id: voc_classes
-    params: {}
-
-  - name: BLIPClassifier
-    id: blip_classifier
-    params: 
-      device: cuda:0
+  - name: VOCClassifier
+    id: voc_classifier
+    params:
+      weight_path: .tmp/voc-classifier-weight.pth
 
   - name: ClipSegSegmentor
-    id: clipseg_advance
+    id: clipseg
     params:
       mask_threshold: .35
       uncertainty_threshold: .35
@@ -65,3 +61,15 @@ connections:
 
   - out: image_gen.sd_response
     in: save_img.image
+
+  - out: image_gen.sd_response
+    in: voc_classifier.image
+
+  - out: voc_classifier.prompt 
+    in: clipseg.text
+
+  - out: image_gen.sd_response
+    in: clipseg.image
+
+  - out: clipseg.mask
+    in: save_mask.mask

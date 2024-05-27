@@ -1,4 +1,4 @@
-from .voc_classifier import VOCClasses
+from .voc_classifier import VOCClassifier
 from synthlab.registry import register, ClassType
 
-register(ClassType.NODE, VOCClasses)
+register(ClassType.NODE, VOCClassifier)

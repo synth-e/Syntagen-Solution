@@ -31,7 +31,7 @@ class VOCMultiLabelClassifier(torch.nn.Module):
     def labels(cls):
         return {'cat': 0, 'monitor': 1, 'car': 2, 'bus': 3, 'bottle': 4, 'bird': 5, 'cow': 6, 'sheep': 7, 'motorbike': 8, 'sofa': 9, 'plane': 10, 'bicycle': 11, 'chair': 12, 'boat': 13, 'potted plant': 14, 'horse': 15, 'train': 16, 'person': 17, 'dining table': 18, 'dog': 19}
 
-class VOCClasses(IImageClassifier):
+class VOCClassifier(IImageClassifier):
     @classmethod
     def in_specs(cls) -> list[tuple[str, type]]:
         return [
@@ -89,7 +89,6 @@ class VOCClasses(IImageClassifier):
         img = self.clip_preprocess(img).unsqueeze(0).to(self.inference_device)
         logits = self.classifier(img)
         act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
-
         return TextualPrompt(
             labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
         )
