@@ -12,7 +12,6 @@ logger = structlog.get_logger(__name__)
 def parse_options():
     parser = ArgumentParser()
     parser.add_argument("-c", "--pipeline-config", type=str, help="Path to the config file (yaml format)")
-    parser.add_argument("-i", "--input", type=str, help="Input data for the pipeline", nargs="+")
     return parser.parse_args()
 
 def main():
