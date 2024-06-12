@@ -120,7 +120,6 @@ class VOCCLIPES(IImageSegmentor):
         
         self.clip_model = self.clip_model.to(self.idle_device)
 
-    @torch.no_grad()
     def __call__(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
         labels = prompt.labels
         img = _img.pil
