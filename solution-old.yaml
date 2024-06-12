@@ -35,14 +35,16 @@ modules:
   - name: VOCClassifier
     id: voc_classifier
     params:
-      device: cuda:0
       weight_path: .tmp/voc-classifier-weight.pth
 
-  - name: VOCCLIPES
-    id: clipes
+  - name: ClipSegSegmentor
+    id: clipseg
     params:
+      mask_threshold: .35
+      uncertainty_threshold: .35
       device: cuda:0
-      weight_path: .tmp/vitb16.pt
+      interpolation_mode: bilinear
+      checkpoint: CIDAS/clipseg-rd64-refined
 
   - name: SavePascalVOCSegmentation
     id: save_mask
@@ -65,10 +67,10 @@ connections:
     in: voc_classifier.image
 
   - out: voc_classifier.prompt 
-    in: clipes.target
+    in: clipseg.text
 
   - out: image_gen.sd_response
-    in: clipes.image
+    in: clipseg.image
 
-  - out: clipes.prediction
+  - out: clipseg.mask
     in: save_mask.mask
