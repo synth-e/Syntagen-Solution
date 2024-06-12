@@ -77,8 +77,8 @@ class VOCCLIPES(IImageSegmentor):
             bi_w=4,
         )
 
-        self.bg_text_features = self._text_preprocess(background_category, ['a clean origami {}.'])
-        self.fg_text_features = self._text_preprocess(aug_class_names, ['a clean origami {}.'])
+        self.bg_text_features = self._text_preprocess(background_category)
+        self.fg_text_features = self._text_preprocess(aug_class_names)
 
     @torch.no_grad()
     def _text_preprocess(self, targets: list):

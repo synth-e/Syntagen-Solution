@@ -11,8 +11,9 @@ This is our solution for the Syntagen Challenge. It is built on top of some rese
 ## Installation
 
 Requirement:
-- MS visual C++14 build tool or greater. [installation here](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-- Conda. [installation here](https://docs.anaconda.com/free/miniconda/)
+- MS visual C++14 build tool or greater. [installation here](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+- Conda. [installation here](https://docs.anaconda.com/free/miniconda/).
+- CUDA 11.7 with CuDNN installed. 
 
 ```bash
 conda create -n <env_name> python==3.9
