@@ -14,9 +14,9 @@ extra_urls = [
 ]
 
 dependencies = [
-    "git+https://github.com/synth-e/SynthLab",
+    "SynthLab @ git+https://github.com/synth-e/SynthLab",
     "gdown",
-    "git+https://github.com/lucasb-eyer/pydensecrf",
+    "pydensecrf @ git+https://github.com/lucasb-eyer/pydensecrf",
     "lxml", 
     "regex", 
     "ttach", 
