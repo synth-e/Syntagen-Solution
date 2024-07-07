@@ -31,7 +31,7 @@ def main():
         cfg["modules"],
         cfg["connections"],
         only_check=False,
-        visualize=None,
+        visualize='visualize.png',
     )
 
     logger.info("[Constructing pipeline] Done!")
