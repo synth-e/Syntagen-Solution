@@ -1,10 +1,9 @@
-import nodes
+import cvprw2024_syntagen_teddybear
 from argparse import ArgumentParser
 from synthlab.registry import report, print_instruction_of, create as create_component, ClassType
 import sys
 import yaml
 from tqdm import tqdm
-import importlib
 import structlog
 
 logger = structlog.get_logger(__name__)

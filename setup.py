@@ -34,7 +34,11 @@ setup(
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     url="https://github.com/synth-e/synthlab",
-    packages=find_packages(exclude=[], include=["_clip", "_clipes_utilities", "_torch_grad_cam", "nodes"]),
+    packages=find_packages(
+        exclude=[], 
+        include=["_clip", "_clipes_utilities", "_torch_grad_cam", "cvprw2024_syntagen_teddybear"]
+    ),
+    data_files=[('_clip', ['bpe_simple_vocab_16e6.txt.gz'])],
     python_requires=">=3.9",
     install_requires=dependencies,
     keywords="Python, API, Bard, Google Bard, Large Language Model, Chatbot API, Google API, Chatbot",
