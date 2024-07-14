@@ -12,6 +12,8 @@ from _clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
 from _pytorch_grad_cam import GradCAM
 from _pytorch_grad_cam.utils.image import scale_cam_image
 import cv2
+import os
+import gdown
 
 logger = structlog.getLogger(__name__)
 
@@ -51,10 +53,17 @@ class VOCCLIPES(IImageSegmentor):
             ("prediction", MaskWrapper),
         ]
 
-    def __init__(self, weight_path, **kwargs):
+    def __init__(self, gdrive_id, **kwargs):
         super().__init__(**kwargs)
+        
+        os.makedirs('.tmp', exist_ok=True)
+        
+        if not os.path.exists(f'.tmp/{gdrive_id}.pt'):
+            gdown.download(id=gdrive_id, output=f'.tmp/{gdrive_id}.pt')
 
-        self.model_weight = weight_path  
+        assert os.path.exists(f'.tmp/{gdrive_id}.pt'), f"Model file not found: {gdrive_id}.pt"
+
+        self.model_weight = f'.tmp/{gdrive_id}.pt'
         self.clip_model, self.clip_preprocess = clip.load(
             self.model_weight, 
             device=self.inference_device if not self.low_resource_mode else self.idle_device

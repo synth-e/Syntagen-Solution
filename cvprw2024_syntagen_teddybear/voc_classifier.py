@@ -4,6 +4,8 @@ import numpy as np
 import structlog
 import clip
 import torch
+import gdown
+import os
 from synthlab.utilities.data.label import VOC2012_CATEGORIES
 
 logger = structlog.getLogger(__name__)
@@ -46,23 +48,28 @@ class VOCClassifier(IImageClassifier):
             ("prompt", TextualPrompt),
         ]
 
-    def __init__(self, weight_path, **kwargs):
+    def __init__(self, gdrive_id, **kwargs):
         super().__init__(**kwargs)
 
         self.clip_model, self.clip_preprocess = clip.load(
             "ViT-B/32", 
             device=self.inference_device if not self.low_resource_mode else self.idle_device
         )
-        
+
         self.classifier = VOCMultiLabelClassifier(self.clip_model.visual)
-        
-        if weight_path is not None:
-            self.classifier.load_state_dict(
-                torch.load(
-                    weight_path, 
-                    map_location=self.inference_device if not self.low_resource_mode else self.idle_device
-                )
+
+        os.makedirs('.tmp', exist_ok=True)
+        if not os.path.exists(f'.tmp/{gdrive_id}.pth'):
+            gdown.download(id=gdrive_id, output=f'.tmp/{gdrive_id}.pth')
+
+        assert os.path.exists(f'.tmp/{gdrive_id}.pth'), f"Model file {gdrive_id} not found
+
+        self.classifier.classifier.load_state_dict(
+            torch.load(
+                f'.tmp/{gdrive_id}.pth', 
+                map_location=self.inference_device if not self.low_resource_mode else self.idle_device
             )
+        )
 
         self.voc_class_names = VOC2012_CATEGORIES
 

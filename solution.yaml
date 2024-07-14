@@ -37,13 +37,13 @@ modules:
     id: voc_classifier
     params:
       device: cuda:0
-      weight_path: .tmp/voc-classifier-weight.pth
+      gdrive_id: 1vOTXjBiuix6CDXbuDGhhnQCHlbEgU4oN
 
   - name: VOCCLIPES
     id: clipes
     params:
       device: cuda:0
-      weight_path: .tmp/vitb16.pt
+      gdrive_id: 1Vvk0CpD7rQxBTICttVcORi_h1_mfRLgY
 
   - name: SavePascalVOCSegmentation
     id: save_mask
