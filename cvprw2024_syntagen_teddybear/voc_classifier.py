@@ -62,7 +62,7 @@ class VOCClassifier(IImageClassifier):
         if not os.path.exists(f'.tmp/{gdrive_id}.pth'):
             gdown.download(id=gdrive_id, output=f'.tmp/{gdrive_id}.pth')
 
-        assert os.path.exists(f'.tmp/{gdrive_id}.pth'), f"Model file {gdrive_id} not found
+        assert os.path.exists(f'.tmp/{gdrive_id}.pth'), f"Model file {gdrive_id} not found"
 
         self.classifier.classifier.load_state_dict(
             torch.load(
