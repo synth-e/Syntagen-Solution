@@ -7,6 +7,7 @@ import torch
 import gdown
 import os
 from synthlab.utilities.data.label import VOC2012_CATEGORIES
+import traceback
 
 logger = structlog.getLogger(__name__)
 
@@ -95,9 +96,21 @@ class VOCClassifier(IImageClassifier):
 
     @torch.no_grad()
     def __call__(self, img: ImageWrapper, *args, **kwargs) -> TextualPrompt:
-        inp = self.clip_preprocess(img.pil).unsqueeze(0).to(self.inference_device)
-        logits = self.classifier(inp)
-        act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
-        return TextualPrompt(
-            labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
-        )
+        
+        try:
+            self._ready_to_inference()
+            inp = self.clip_preprocess(img.pil).unsqueeze(0).to(self.inference_device)
+            logits = self.classifier(inp)
+            act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
+            return TextualPrompt(
+                labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
+            )
+        except Exception as err:
+            traceback.print_exc()
+
+            return TextualPrompt(
+                labels=[]
+            )
+
+        finally:
+            self._completed_inference()
