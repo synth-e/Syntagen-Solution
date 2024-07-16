@@ -65,11 +65,9 @@ class VOCClassifier(IImageClassifier):
 
         assert os.path.exists(f'.tmp/{gdrive_id}.pth'), f"Model file {gdrive_id} not found"
 
-        self.classifier.classifier.load_state_dict(
-            torch.load(
-                f'.tmp/{gdrive_id}.pth', 
-                map_location=self.inference_device if not self.low_resource_mode else self.idle_device
-            )
+        self.classifier.classifier = torch.load(
+            f'.tmp/{gdrive_id}.pth', 
+            map_location=self.inference_device if not self.low_resource_mode else self.idle_device
         )
 
         self.voc_class_names = VOC2012_CATEGORIES
@@ -108,9 +106,7 @@ class VOCClassifier(IImageClassifier):
         except Exception as err:
             traceback.print_exc()
 
-            return TextualPrompt(
-                labels=[]
-            )
+            return TextualPrompt(labels=[])
 
         finally:
             self._completed_inference()
