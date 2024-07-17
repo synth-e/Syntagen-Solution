@@ -14,6 +14,7 @@ from _pytorch_grad_cam.utils.image import scale_cam_image
 import cv2
 import os
 import gdown
+import traceback
 
 logger = structlog.getLogger(__name__)
 
@@ -130,125 +131,134 @@ class VOCCLIPES(IImageSegmentor):
         self.clip_model = self.clip_model.to(self.idle_device)
 
     def __call__(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
-        labels = prompt.labels
-        img = _img.pil
         
-        label_list = []
-        label_id_list = []
+        try:
+            self._ready_to_inference()
+            labels = prompt.labels
+            img = _img.pil
+            
+            label_list = []
+            label_id_list = []
 
-        for obj in labels:
-            obj = aug_class_names[class_names.index(obj)]
+            for obj in labels:
+                obj = aug_class_names[class_names.index(obj)]
 
-            if obj not in label_list:
-                label_list.append(obj)
-                label_id_list.append(aug_class_names.index(obj))
+                if obj not in label_list:
+                    label_list.append(obj)
+                    label_id_list.append(aug_class_names.index(obj))
+            
+            if len(label_list) == 0:
+                return MaskWrapper(np.zeros(_img.size(), dtype=np.uint8))
+            
+            ori_width, ori_height = img.size
+            ms_imgs = img_ms_and_flip_v2(img, ori_height, ori_width, scales=[1.0])
+            ms_imgs = [ms_imgs[0]]
+            highres_cam_all_scales = []
+            refined_cam_all_scales = []
+
+            for image in ms_imgs:
+                image = image.unsqueeze(0)
+                h, w = image.shape[-2], image.shape[-1]
+                image = image.to(self.inference_device)
+                image_features, attn_weight_list = self.clip_model.encode_image(image, h, w)
+
+                highres_cam_to_save = []
+                refined_cam_to_save = []
+                keys = []
+
+                bg_features_temp = self.bg_text_features.to(self.inference_device)  # [bg_id_for_each_image[im_idx]].to(device_id)
+                fg_features_temp = self.fg_text_features[label_id_list].to(self.inference_device)
+                text_features_temp = torch.cat([fg_features_temp, bg_features_temp], dim=0)
+                input_tensor = [image_features, text_features_temp.to(self.inference_device), h, w]
+
+                for idx, label in enumerate(label_list):
+                    keys.append(aug_class_names.index(label))
+                    targets = [ClipOutputTarget(label_list.index(label))]
+
+                    #torch.cuda.empty_cache()
+                    grayscale_cam, _ , attn_weight_last = self.cam(
+                        input_tensor=input_tensor,
+                        targets=targets,
+                        target_size=None
+                    )  # (ori_width, ori_height))
+
+                    grayscale_cam = grayscale_cam[0, :]
+
+                    grayscale_cam_highres = cv2.resize(grayscale_cam, (ori_width, ori_height))
+                    highres_cam_to_save.append(torch.tensor(grayscale_cam_highres))
+
+                    if idx == 0:
+                        attn_weight_list.append(attn_weight_last)
+                        attn_weight = [aw[:, 1:, 1:] for aw in attn_weight_list]  # (b, hxw, hxw)
+                        attn_weight = torch.stack(attn_weight, dim=0)[-8:]
+                        attn_weight = torch.mean(attn_weight, dim=0)
+                        attn_weight = attn_weight[0].cpu().detach()
+                    attn_weight = attn_weight.float()
+
+                    box, cnt = scoremap2bbox(scoremap=grayscale_cam, threshold=0.4, multi_contour_eval=True)
+                    aff_mask = torch.zeros((grayscale_cam.shape[0],grayscale_cam.shape[1]))
+                    for i_ in range(cnt):
+                        x0_, y0_, x1_, y1_ = box[i_]
+                        aff_mask[y0_:y1_, x0_:x1_] = 1
+
+                    aff_mask = aff_mask.view(1,grayscale_cam.shape[0] * grayscale_cam.shape[1])
+                    aff_mat = attn_weight
+
+                    trans_mat = aff_mat / torch.sum(aff_mat, dim=0, keepdim=True)
+                    trans_mat = trans_mat / torch.sum(trans_mat, dim=1, keepdim=True)
+
+                    for _ in range(2):
+                        trans_mat = trans_mat / torch.sum(trans_mat, dim=0, keepdim=True)
+                        trans_mat = trans_mat / torch.sum(trans_mat, dim=1, keepdim=True)
+                    trans_mat = (trans_mat + trans_mat.transpose(1, 0)) / 2
+
+                    for _ in range(1):
+                        trans_mat = torch.matmul(trans_mat, trans_mat)
+
+                    trans_mat = trans_mat * aff_mask
+
+                    cam_to_refine = torch.FloatTensor(grayscale_cam)
+                    cam_to_refine = cam_to_refine.view(-1,1)
+
+                    # (n,n) * (n,1)->(n,1)
+                    cam_refined = torch.matmul(trans_mat, cam_to_refine).reshape(h //16, w // 16)
+                    cam_refined = cam_refined.cpu().numpy().astype(np.float32)
+                    cam_refined_highres = scale_cam_image([cam_refined], (ori_width, ori_height))[0]
+                    refined_cam_to_save.append(torch.tensor(cam_refined_highres))
+
+                keys = torch.tensor(keys)
+                #cam_all_scales.append(torch.stack(cam_to_save,dim=0))
+                highres_cam_all_scales.append(torch.stack(highres_cam_to_save,dim=0))
+                refined_cam_all_scales.append(torch.stack(refined_cam_to_save,dim=0))
+
+
+            # cam_all_scales = cam_all_scales[0]
+            highres_cam_all_scales = highres_cam_all_scales[0]
+            refined_cam_all_scales = refined_cam_all_scales[0]
+
+            cv2img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR).astype(np.float32)
+
+            cv2img -= mean_bgr
+            cv2img = cv2img.transpose(2, 0, 1)
+            cams = refined_cam_all_scales.cpu().numpy().astype(np.float16)
+            bg_score = np.power(1 - np.max(cams, axis=0, keepdims=True), 1)
+            cams = np.concatenate((bg_score, cams), axis=0)
+            prob = cams
+
+            cv2img = cv2img.astype(np.uint8).transpose(1, 2, 0)
+            prob = self.postprocessor(cv2img, prob)
         
-        if len(label_list) == 0:
+            label = np.argmax(prob, axis=0)
+            keys = np.pad(keys.numpy() + 1, (1, 0), mode='constant')
+            label = keys[label]
+
+            confidence = np.max(prob, axis=0)
+            label[confidence < 0.95] = 255
+
+            return MaskWrapper(label.astype(np.uint8), labels=VOC2012_DATA_CONTEXT.id2label)
+        except Exception as err:
+            traceback.print_exc()
             return MaskWrapper(np.zeros(_img.size(), dtype=np.uint8))
         
-        ori_width, ori_height = img.size
-        ms_imgs = img_ms_and_flip_v2(img, ori_height, ori_width, scales=[1.0])
-        ms_imgs = [ms_imgs[0]]
-        highres_cam_all_scales = []
-        refined_cam_all_scales = []
-
-        for image in ms_imgs:
-            image = image.unsqueeze(0)
-            h, w = image.shape[-2], image.shape[-1]
-            image = image.to(self.inference_device)
-            image_features, attn_weight_list = self.clip_model.encode_image(image, h, w)
-
-            highres_cam_to_save = []
-            refined_cam_to_save = []
-            keys = []
-
-            bg_features_temp = self.bg_text_features.to(self.inference_device)  # [bg_id_for_each_image[im_idx]].to(device_id)
-            fg_features_temp = self.fg_text_features[label_id_list].to(self.inference_device)
-            text_features_temp = torch.cat([fg_features_temp, bg_features_temp], dim=0)
-            input_tensor = [image_features, text_features_temp.to(self.inference_device), h, w]
-
-            for idx, label in enumerate(label_list):
-                keys.append(aug_class_names.index(label))
-                targets = [ClipOutputTarget(label_list.index(label))]
-
-                #torch.cuda.empty_cache()
-                grayscale_cam, _ , attn_weight_last = self.cam(
-                    input_tensor=input_tensor,
-                    targets=targets,
-                    target_size=None
-                )  # (ori_width, ori_height))
-
-                grayscale_cam = grayscale_cam[0, :]
-
-                grayscale_cam_highres = cv2.resize(grayscale_cam, (ori_width, ori_height))
-                highres_cam_to_save.append(torch.tensor(grayscale_cam_highres))
-
-                if idx == 0:
-                    attn_weight_list.append(attn_weight_last)
-                    attn_weight = [aw[:, 1:, 1:] for aw in attn_weight_list]  # (b, hxw, hxw)
-                    attn_weight = torch.stack(attn_weight, dim=0)[-8:]
-                    attn_weight = torch.mean(attn_weight, dim=0)
-                    attn_weight = attn_weight[0].cpu().detach()
-                attn_weight = attn_weight.float()
-
-                box, cnt = scoremap2bbox(scoremap=grayscale_cam, threshold=0.4, multi_contour_eval=True)
-                aff_mask = torch.zeros((grayscale_cam.shape[0],grayscale_cam.shape[1]))
-                for i_ in range(cnt):
-                    x0_, y0_, x1_, y1_ = box[i_]
-                    aff_mask[y0_:y1_, x0_:x1_] = 1
-
-                aff_mask = aff_mask.view(1,grayscale_cam.shape[0] * grayscale_cam.shape[1])
-                aff_mat = attn_weight
-
-                trans_mat = aff_mat / torch.sum(aff_mat, dim=0, keepdim=True)
-                trans_mat = trans_mat / torch.sum(trans_mat, dim=1, keepdim=True)
-
-                for _ in range(2):
-                    trans_mat = trans_mat / torch.sum(trans_mat, dim=0, keepdim=True)
-                    trans_mat = trans_mat / torch.sum(trans_mat, dim=1, keepdim=True)
-                trans_mat = (trans_mat + trans_mat.transpose(1, 0)) / 2
-
-                for _ in range(1):
-                    trans_mat = torch.matmul(trans_mat, trans_mat)
-
-                trans_mat = trans_mat * aff_mask
-
-                cam_to_refine = torch.FloatTensor(grayscale_cam)
-                cam_to_refine = cam_to_refine.view(-1,1)
-
-                # (n,n) * (n,1)->(n,1)
-                cam_refined = torch.matmul(trans_mat, cam_to_refine).reshape(h //16, w // 16)
-                cam_refined = cam_refined.cpu().numpy().astype(np.float32)
-                cam_refined_highres = scale_cam_image([cam_refined], (ori_width, ori_height))[0]
-                refined_cam_to_save.append(torch.tensor(cam_refined_highres))
-
-            keys = torch.tensor(keys)
-            #cam_all_scales.append(torch.stack(cam_to_save,dim=0))
-            highres_cam_all_scales.append(torch.stack(highres_cam_to_save,dim=0))
-            refined_cam_all_scales.append(torch.stack(refined_cam_to_save,dim=0))
-
-
-        # cam_all_scales = cam_all_scales[0]
-        highres_cam_all_scales = highres_cam_all_scales[0]
-        refined_cam_all_scales = refined_cam_all_scales[0]
-
-        cv2img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR).astype(np.float32)
-
-        cv2img -= mean_bgr
-        cv2img = cv2img.transpose(2, 0, 1)
-        cams = refined_cam_all_scales.cpu().numpy().astype(np.float16)
-        bg_score = np.power(1 - np.max(cams, axis=0, keepdims=True), 1)
-        cams = np.concatenate((bg_score, cams), axis=0)
-        prob = cams
-
-        cv2img = cv2img.astype(np.uint8).transpose(1, 2, 0)
-        prob = self.postprocessor(cv2img, prob)
-       
-        label = np.argmax(prob, axis=0)
-        keys = np.pad(keys.numpy() + 1, (1, 0), mode='constant')
-        label = keys[label]
-
-        confidence = np.max(prob, axis=0)
-        label[confidence < 0.95] = 255
-
-        return MaskWrapper(label.astype(np.uint8), labels=VOC2012_DATA_CONTEXT.id2label)
+        finally:
+            self._completed_inference()
