@@ -65,11 +65,11 @@ connections:
   - out: image_gen.sd_response
     in: voc_classifier.image
 
-  - out: voc_classifier.prompt 
-    in: clipes.target
+  - out: voc_classifier.predictions
+    in: clipes.targets
 
   - out: image_gen.sd_response
     in: clipes.image
 
-  - out: clipes.prediction
+  - out: clipes.mask
     in: save_mask.mask
