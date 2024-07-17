@@ -45,7 +45,7 @@ class VOCClassifier(IImageClassifier):
     @classmethod
     def out_specs(cls) -> list[tuple[str, type]]:
         return [
-            ("prompt", TextualPrompt),
+            ("predictions", TextualPrompt),
         ]
 
     def __init__(self, gdrive_id, **kwargs):

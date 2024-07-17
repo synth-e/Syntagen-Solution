@@ -14,7 +14,7 @@ class VOCClasses(INode):
     @classmethod
     def out_specs(cls) -> list[tuple[str, type]]:
         return [
-            ("prompt", TextualPrompt),
+            ("targets", TextualPrompt),
         ]
 
     def __init__(self, **kwargs):

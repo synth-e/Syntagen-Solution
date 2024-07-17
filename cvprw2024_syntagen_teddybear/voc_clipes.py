@@ -44,13 +44,13 @@ class VOCCLIPES(IImageSegmentor):
     def in_specs(cls) -> list[tuple[str, type]]:
         return [
             ("image", ImageWrapper),
-            ("target", TextualPrompt),
+            ("targets", TextualPrompt),
         ]
 
     @classmethod
     def out_specs(cls) -> list[tuple[str, type]]:
         return [
-            ("prediction", MaskWrapper),
+            ("mask", MaskWrapper),
         ]
 
     def __init__(self, gdrive_id, **kwargs):
