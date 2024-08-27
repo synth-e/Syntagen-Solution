@@ -1,10 +1,10 @@
-from synthlab.module.cv.segmentation.base import IImageSegmentor
-from synthlab.common.atomic import TextualPrompt, IndexedFile, ImageWrapper, MaskWrapper
+from synthlab_core.module.cv.segmentation.base import IImageSegmentor
+from synthlab_core.common.atomic import TextualPrompt, IndexedFile, ImageWrapper, MaskWrapper
 import numpy as np
 import structlog
 import torch
-from synthlab.utilities.data.label import VOC2012_CATEGORIES
-from synthlab.utilities.data import VOC2012_DATA_CONTEXT
+from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
+from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
 import _clip as clip
 from _clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox

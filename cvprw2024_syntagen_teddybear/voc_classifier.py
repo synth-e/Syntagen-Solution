@@ -1,10 +1,10 @@
-from synthlab.module.cv.classification.base import IImageClassifier
-from synthlab.common.atomic import TextualPrompt, IndexedFile, ImageWrapper
+from synthlab_core.module.cv.classification.base import IImageClassifier
+from synthlab_core.common.atomic import TextualPrompt, IndexedFile, ImageWrapper
 import numpy as np
 import structlog
 import clip
 import torch
-from synthlab.utilities.data.label import VOC2012_CATEGORIES
+from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 
 logger = structlog.getLogger(__name__)
 

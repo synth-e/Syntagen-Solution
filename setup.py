@@ -14,7 +14,7 @@ extra_urls = [
 ]
 
 dependencies = [
-    "SynthLab @ git+https://github.com/synth-e/SynthLab",
+    "SynthLab-core @ git+https://github.com/synth-e/SynthLab-core",
     "gdown",
     "pydensecrf @ git+https://github.com/lucasb-eyer/pydensecrf",
     "lxml", 
@@ -38,11 +38,13 @@ setup(
         exclude=[], 
         include=["_clip", "_clipes_utilities", "_torch_grad_cam", "cvprw2024_syntagen_teddybear"]
     ),
-    package_data={
-        '_clip': ['_clip/bpe_simple_vocab_16e6.txt.gz']
-    },
     python_requires=">=3.9",
     install_requires=dependencies,
+    extra_requires={
+        'full': [
+            "SynthLab @ git+https://github.com/synth-e/SynthLab"
+        ]
+    }
     keywords="Python, API, Bard, Google Bard, Large Language Model, Chatbot API, Google API, Chatbot",
     classifiers=[
         "Development Status :: 5 - Production/Stable",

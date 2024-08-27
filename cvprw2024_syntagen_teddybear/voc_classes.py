@@ -1,8 +1,8 @@
-from synthlab.node import INode
-from synthlab.common.atomic import TextualPrompt, IndexedFile, MaskWrapper
+from synthlab_core.node import INode
+from synthlab_core.common.atomic import TextualPrompt, IndexedFile, MaskWrapper
 import numpy as np
 import structlog
-from synthlab.utilities.data.label import VOC2012_CATEGORIES
+from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 
 logger = structlog.getLogger(__name__)
 
