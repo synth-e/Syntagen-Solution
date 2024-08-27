@@ -44,7 +44,7 @@ setup(
         'full': [
             "SynthLab @ git+https://github.com/synth-e/SynthLab"
         ]
-    }
+    },
     keywords="Python, API, Bard, Google Bard, Large Language Model, Chatbot API, Google API, Chatbot",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
