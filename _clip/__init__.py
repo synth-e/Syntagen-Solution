@@ -1,7 +1,7 @@
 import gdown, os
 
 res = [
-    ('bpe_simple_vocab_16e6.txt.gz', '933b7abbbbde62c36f02f0e6ccde464f', '1rfEQqTWOpfSC7VxoQ08WPGdUlI4ddO4N')
+    (os.path.join(os.path.dirname(__file__), 'bpe_simple_vocab_16e6.txt.gz'), '933b7abbbbde62c36f02f0e6ccde464f', '1rfEQqTWOpfSC7VxoQ08WPGdUlI4ddO4N')
 ]
 
 def md5sum(filename):
