@@ -1,5 +1,5 @@
-from synthlab_core.module.cv.segmentation.base import IImageSegmentor
-from synthlab_core.common.atomic import TextualPrompt, IndexedFile, ImageWrapper, MaskWrapper
+from synthlab_core.atomic import TextualPrompt, IndexedFile, ImageWrapper, MaskWrapper
+from synthlab_core.node import INode
 import numpy as np
 import structlog
 import torch
@@ -37,7 +37,7 @@ background_category = [
 
 mean_bgr = (104.008, 116.669, 122.675)
 
-class VOCCLIPES(IImageSegmentor):
+class VOCCLIPES(INode):
     @classmethod
     def in_specs(cls) -> list[tuple[str, type]]:
         return [

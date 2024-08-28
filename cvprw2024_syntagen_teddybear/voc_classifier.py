@@ -1,5 +1,5 @@
-from synthlab_core.module.cv.classification.base import IImageClassifier
-from synthlab_core.common.atomic import TextualPrompt, IndexedFile, ImageWrapper
+from synthlab_core.atomic import TextualPrompt, IndexedFile, ImageWrapper
+from synthlab_core.node import INode
 import numpy as np
 import structlog
 import clip
@@ -33,7 +33,7 @@ class VOCMultiLabelClassifier(torch.nn.Module):
     def labels(cls):
         return {'cat': 0, 'monitor': 1, 'car': 2, 'bus': 3, 'bottle': 4, 'bird': 5, 'cow': 6, 'sheep': 7, 'motorbike': 8, 'sofa': 9, 'plane': 10, 'bicycle': 11, 'chair': 12, 'boat': 13, 'potted plant': 14, 'horse': 15, 'train': 16, 'person': 17, 'dining table': 18, 'dog': 19}
 
-class VOCClassifier(IImageClassifier):
+class VOCClassifier(INode):
     @classmethod
     def in_specs(cls) -> list[tuple[str, type]]:
         return [
