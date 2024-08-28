@@ -7,10 +7,10 @@ from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
 import _clip as clip
-from _clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
-from _clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
-from _pytorch_grad_cam import GradCAM
-from _pytorch_grad_cam.utils.image import scale_cam_image
+from ._clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
+from ._clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
+from ._pytorch_grad_cam import GradCAM
+from ._pytorch_grad_cam.utils.image import scale_cam_image
 import cv2
 
 logger = structlog.getLogger(__name__)

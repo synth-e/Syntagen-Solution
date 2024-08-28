@@ -36,7 +36,7 @@ setup(
     url="https://github.com/synth-e/synthlab",
     packages=find_packages(
         exclude=[], 
-        include=["_clip", "_clipes_utilities", "_torch_grad_cam", "cvprw2024_syntagen_teddybear"]
+        include=["cvprw2024_syntagen_teddybear"]
     ),
     python_requires=">=3.9",
     install_requires=dependencies,
