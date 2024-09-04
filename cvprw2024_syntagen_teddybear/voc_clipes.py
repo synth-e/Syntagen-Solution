@@ -57,7 +57,8 @@ class VOCCLIPES(INode):
         self.model_weight = weight_path  
         self.clip_model, self.clip_preprocess = clip.load(
             self.model_weight, 
-            device=self.inference_device if not self.low_resource_mode else self.idle_device
+            device=self.inference_device 
+            if not self.switch_device else self.idle_device
         )
 
         target_layers = [self.clip_model.visual.transformer.resblocks[-1].ln_1]
@@ -76,51 +77,37 @@ class VOCCLIPES(INode):
             bi_rgb_std=3,
             bi_w=4,
         )
-
+        
+        
         self.bg_text_features = self._text_preprocess(background_category)
         self.fg_text_features = self._text_preprocess(aug_class_names)
 
     @torch.no_grad()
     def _text_preprocess(self, targets: list):
+        self.ready()
+        
         if isinstance(targets, str):
             targets = [targets]
 
         zeroshot_weights = []
 
-        try:
-            self._ready_to_inference()
-
-            for classname in targets:
-                texts = ['a clean origami {}.'.format(classname)] # format with class
-                texts = clip.tokenize(texts).to(self.inference_device) # tokenize
-                class_embeddings = self.clip_model.encode_text(texts) # embed with text encoder
-                class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
-                class_embedding = class_embeddings.mean(dim=0)
-                class_embedding /= class_embedding.norm()
-                zeroshot_weights.append(class_embedding)
-            
-            zeroshot_weights = torch.stack(zeroshot_weights, dim=1).to(
-                self.idle_device if self.low_resource_mode else self.inference_device
-            )
-            return zeroshot_weights.t()
-        except Exception as err:
-            return None
-        finally:
-            self._completed_inference()
+        for classname in targets:
+            texts = ['a clean origami {}.'.format(classname)] # format with class
+            texts = clip.tokenize(texts).to(self.inference_device) # tokenize
+            class_embeddings = self.clip_model.encode_text(texts) # embed with text encoder
+            class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
+            class_embedding = class_embeddings.mean(dim=0)
+            class_embedding /= class_embedding.norm()
+            zeroshot_weights.append(class_embedding)
+        
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).to(
+            self.idle_device if self.switch_device else self.inference_device
+        )
+        
+        self.idle()
+        return zeroshot_weights.t()
     
-    def _ready_to_inference(self):
-        if not self.low_resource_mode:
-            return
-        
-        self.clip_model = self.clip_model.to(self.inference_device)
-
-    def _completed_inference(self):
-        if not self.low_resource_mode:
-            return
-        
-        self.clip_model = self.clip_model.to(self.idle_device)
-
-    def __call__(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
+    def forward(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
         labels = prompt.labels
         img = _img.pil
         

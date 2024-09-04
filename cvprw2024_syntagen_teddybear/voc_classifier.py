@@ -51,7 +51,8 @@ class VOCClassifier(INode):
 
         self.clip_model, self.clip_preprocess = clip.load(
             "ViT-B/32", 
-            device=self.inference_device if not self.low_resource_mode else self.idle_device
+            device=self.inference_device 
+            if not self.switch_device else self.idle_device
         )
         
         self.classifier = VOCMultiLabelClassifier(self.clip_model.visual)
@@ -60,7 +61,8 @@ class VOCClassifier(INode):
             self.classifier.load_state_dict(
                 torch.load(
                     weight_path, 
-                    map_location=self.inference_device if not self.low_resource_mode else self.idle_device
+                    map_location=self.inference_device 
+                    if not self.switch_device else self.idle_device
                 )
             )
 
@@ -71,26 +73,15 @@ class VOCClassifier(INode):
             for k, v in VOCMultiLabelClassifier.labels().items()
         }
         
-        if not self.low_resource_mode:
+        if not self.switch_device:
             self.classifier.to(self.inference_device)
     
-    def _ready_to_inference(self):
-        if not self.low_resource_mode:
-            return
-
-        self.classifier = self.classifier.to(self.inference_device)
-
-    def _completed_inference(self):
-        if not self.low_resource_mode:
-            return
-
-        self.classifier = self.classifier.to(self.idle_device)
-
     @torch.no_grad()
-    def __call__(self, img: ImageWrapper, *args, **kwargs) -> TextualPrompt:
+    def forward(self, img: ImageWrapper) -> TextualPrompt:
         inp = self.clip_preprocess(img.pil).unsqueeze(0).to(self.inference_device)
         logits = self.classifier(inp)
         act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
         return TextualPrompt(
-            labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
+            labels=[self.voc_class_names[self.linker[i]] 
+                    for i, v in enumerate(act) if v]
         )
