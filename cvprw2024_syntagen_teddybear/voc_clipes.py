@@ -6,12 +6,14 @@ import torch
 from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
-import _clip as clip
+from . import _clip as clip
 from ._clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
 from ._clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
 from ._pytorch_grad_cam import GradCAM
 from ._pytorch_grad_cam.utils.image import scale_cam_image
 import cv2
+import os
+import gdown
 
 logger = structlog.getLogger(__name__)
 
@@ -51,12 +53,20 @@ class VOCCLIPES(INode):
             ("prediction", MaskWrapper),
         ]
 
-    def __init__(self, weight_path, **kwargs):
+    def __init__(self, gdrive_id, **kwargs):
         super().__init__(**kwargs)
+        
+        self.gdrive_id = gdrive_id        
+        self.weight_path = f'.tmp/{self.gdrive_id}.pt'
+        os.makedirs('.tmp', exist_ok=True)
 
-        self.model_weight = weight_path  
+        if not os.path.exists(self.weight_path):
+            gdown.download(id=self.gdrive_id, output=self.weight_path, quiet=False)
+            
+        assert os.path.exists(self.weight_path), f"Model not found at {self.weight_path}"
+
         self.clip_model, self.clip_preprocess = clip.load(
-            self.model_weight, 
+            self.weight_path, 
             device=self.inference_device 
             if not self.switch_device else self.idle_device
         )
@@ -115,12 +125,14 @@ class VOCCLIPES(INode):
         label_id_list = []
 
         for obj in labels:
-            obj = aug_class_names[class_names.index(obj)]
+            idx = class_names.index(obj)
+            if idx != -1:
+                obj = aug_class_names[idx]
 
-            if obj not in label_list:
-                label_list.append(obj)
-                label_id_list.append(aug_class_names.index(obj))
-        
+                if obj not in label_list:
+                    label_list.append(obj)
+                    label_id_list.append(idx)
+            
         if len(label_list) == 0:
             return MaskWrapper(np.zeros(_img.size(), dtype=np.uint8))
         
