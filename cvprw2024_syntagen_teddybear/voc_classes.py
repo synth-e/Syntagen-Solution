@@ -18,9 +18,8 @@ class VOCClasses(INode):
         ]
 
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.cat = VOC2012_CATEGORIES[1:]
 
-    def __call__(self, *args, **kwargs) -> TextualPrompt:
-        return TextualPrompt(
-            labels=self.cat
-        )
+    def forward(self, *args, **kwargs) -> TextualPrompt:
+        return TextualPrompt(labels=self.cat)

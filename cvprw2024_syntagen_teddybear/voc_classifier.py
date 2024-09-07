@@ -1,9 +1,10 @@
-from synthlab_core.atomic import TextualPrompt, IndexedFile, ImageWrapper
+from synthlab_core.atomic import TextualPrompt, ImageWrapper
 from synthlab_core.node import INode
-import numpy as np
 import structlog
 import clip
 import torch
+import gdown
+import os
 from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 
 logger = structlog.getLogger(__name__)
@@ -46,23 +47,34 @@ class VOCClassifier(INode):
             ("prompt", TextualPrompt),
         ]
 
-    def __init__(self, weight_path, **kwargs):
+    def __init__(self, gdrive_id, threshold=0.5, **kwargs):
         super().__init__(**kwargs)
 
         self.clip_model, self.clip_preprocess = clip.load(
             "ViT-B/32", 
-            device=self.inference_device if not self.low_resource_mode else self.idle_device
+            device=self.inference_device 
+            if not self.switch_device else self.idle_device
         )
-        
+
         self.classifier = VOCMultiLabelClassifier(self.clip_model.visual)
-        
-        if weight_path is not None:
-            self.classifier.load_state_dict(
-                torch.load(
-                    weight_path, 
-                    map_location=self.inference_device if not self.low_resource_mode else self.idle_device
-                )
+
+        weight_path = os.path.join('.tmp', f"{gdrive_id}.pth")
+        os.makedirs('.tmp', exist_ok=True)
+
+        if not os.path.exists(weight_path):
+            gdown.download(
+                id=gdrive_id,
+                output=weight_path
             )
+
+        if os.path.exists(weight_path):            
+            self.classifier.classifier = torch.load(
+                weight_path, 
+                map_location=self.inference_device 
+                if not self.switch_device else self.idle_device
+            )
+        else:
+            raise FileNotFoundError(f"Weight file not found at {weight_path}")
 
         self.voc_class_names = VOC2012_CATEGORIES
 
@@ -70,27 +82,18 @@ class VOCClassifier(INode):
             v: self.voc_class_names.index(k)
             for k, v in VOCMultiLabelClassifier.labels().items()
         }
-        
-        if not self.low_resource_mode:
+
+        if not self.switch_device:
             self.classifier.to(self.inference_device)
+
+        self.threshold = threshold
     
-    def _ready_to_inference(self):
-        if not self.low_resource_mode:
-            return
-
-        self.classifier = self.classifier.to(self.inference_device)
-
-    def _completed_inference(self):
-        if not self.low_resource_mode:
-            return
-
-        self.classifier = self.classifier.to(self.idle_device)
-
     @torch.no_grad()
-    def __call__(self, img: ImageWrapper, *args, **kwargs) -> TextualPrompt:
+    def forward(self, img: ImageWrapper) -> TextualPrompt:
         inp = self.clip_preprocess(img.pil).unsqueeze(0).to(self.inference_device)
         logits = self.classifier(inp)
-        act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > 0.5
+        act = torch.nn.functional.sigmoid(logits).squeeze(0).cpu().numpy() > self.threshold
         return TextualPrompt(
-            labels=[self.voc_class_names[self.linker[i]] for i, v in enumerate(act) if v]
+            labels=[self.voc_class_names[self.linker[i]] 
+                    for i, v in enumerate(act) if v]
         )

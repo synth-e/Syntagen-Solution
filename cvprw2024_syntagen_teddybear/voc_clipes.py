@@ -6,12 +6,14 @@ import torch
 from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
-import _clip as clip
+from . import _clip as clip
 from ._clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
 from ._clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
 from ._pytorch_grad_cam import GradCAM
 from ._pytorch_grad_cam.utils.image import scale_cam_image
 import cv2
+import os
+import gdown
 
 logger = structlog.getLogger(__name__)
 
@@ -51,13 +53,22 @@ class VOCCLIPES(INode):
             ("prediction", MaskWrapper),
         ]
 
-    def __init__(self, weight_path, **kwargs):
+    def __init__(self, gdrive_id, **kwargs):
         super().__init__(**kwargs)
+        
+        self.gdrive_id = gdrive_id        
+        self.weight_path = f'.tmp/{self.gdrive_id}.pt'
+        os.makedirs('.tmp', exist_ok=True)
 
-        self.model_weight = weight_path  
+        if not os.path.exists(self.weight_path):
+            gdown.download(id=self.gdrive_id, output=self.weight_path, quiet=False)
+            
+        assert os.path.exists(self.weight_path), f"Model not found at {self.weight_path}"
+
         self.clip_model, self.clip_preprocess = clip.load(
-            self.model_weight, 
-            device=self.inference_device if not self.low_resource_mode else self.idle_device
+            self.weight_path, 
+            device=self.inference_device 
+            if not self.switch_device else self.idle_device
         )
 
         target_layers = [self.clip_model.visual.transformer.resblocks[-1].ln_1]
@@ -76,51 +87,37 @@ class VOCCLIPES(INode):
             bi_rgb_std=3,
             bi_w=4,
         )
-
+        
+        
         self.bg_text_features = self._text_preprocess(background_category)
         self.fg_text_features = self._text_preprocess(aug_class_names)
 
     @torch.no_grad()
     def _text_preprocess(self, targets: list):
+        self.ready()
+        
         if isinstance(targets, str):
             targets = [targets]
 
         zeroshot_weights = []
 
-        try:
-            self._ready_to_inference()
-
-            for classname in targets:
-                texts = ['a clean origami {}.'.format(classname)] # format with class
-                texts = clip.tokenize(texts).to(self.inference_device) # tokenize
-                class_embeddings = self.clip_model.encode_text(texts) # embed with text encoder
-                class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
-                class_embedding = class_embeddings.mean(dim=0)
-                class_embedding /= class_embedding.norm()
-                zeroshot_weights.append(class_embedding)
-            
-            zeroshot_weights = torch.stack(zeroshot_weights, dim=1).to(
-                self.idle_device if self.low_resource_mode else self.inference_device
-            )
-            return zeroshot_weights.t()
-        except Exception as err:
-            return None
-        finally:
-            self._completed_inference()
+        for classname in targets:
+            texts = ['a clean origami {}.'.format(classname)] # format with class
+            texts = clip.tokenize(texts).to(self.inference_device) # tokenize
+            class_embeddings = self.clip_model.encode_text(texts) # embed with text encoder
+            class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
+            class_embedding = class_embeddings.mean(dim=0)
+            class_embedding /= class_embedding.norm()
+            zeroshot_weights.append(class_embedding)
+        
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).to(
+            self.idle_device if self.switch_device else self.inference_device
+        )
+        
+        self.idle()
+        return zeroshot_weights.t()
     
-    def _ready_to_inference(self):
-        if not self.low_resource_mode:
-            return
-        
-        self.clip_model = self.clip_model.to(self.inference_device)
-
-    def _completed_inference(self):
-        if not self.low_resource_mode:
-            return
-        
-        self.clip_model = self.clip_model.to(self.idle_device)
-
-    def __call__(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
+    def forward(self, _img: ImageWrapper, prompt: TextualPrompt, *args, **kwargs) -> TextualPrompt:
         labels = prompt.labels
         img = _img.pil
         
@@ -128,12 +125,14 @@ class VOCCLIPES(INode):
         label_id_list = []
 
         for obj in labels:
-            obj = aug_class_names[class_names.index(obj)]
+            idx = class_names.index(obj)
+            if idx != -1:
+                obj = aug_class_names[idx]
 
-            if obj not in label_list:
-                label_list.append(obj)
-                label_id_list.append(aug_class_names.index(obj))
-        
+                if obj not in label_list:
+                    label_list.append(obj)
+                    label_id_list.append(idx)
+            
         if len(label_list) == 0:
             return MaskWrapper(np.zeros(_img.size(), dtype=np.uint8))
         
