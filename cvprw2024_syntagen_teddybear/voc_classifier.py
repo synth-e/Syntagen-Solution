@@ -58,6 +58,7 @@ class VOCClassifier(INode):
 
         self.classifier = VOCMultiLabelClassifier(self.clip_model.visual)
 
+        self.gdrive_id = gdrive_id
         weight_path = os.path.join('.tmp', f"{gdrive_id}.pth")
         os.makedirs('.tmp', exist_ok=True)
 
