@@ -6,7 +6,7 @@ import torch
 from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
-import custom_clip as clip
+from . import custom_clip as clip
 from .clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
 from .clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
 from .pytorch_grad_cam import GradCAM
