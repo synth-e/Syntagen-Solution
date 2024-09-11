@@ -1,7 +1,7 @@
 from synthlab_core.atomic import TextualPrompt, ImageWrapper
 from synthlab_core.node import INode
 import structlog
-import clip
+from . import clip
 import torch
 import gdown
 import os

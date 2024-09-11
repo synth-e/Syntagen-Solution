@@ -22,7 +22,8 @@ dependencies = [
     "ttach", 
     "tensorboard", 
     "lxml", 
-    "cython"
+    "cython",
+    "ftfy"
 ]
 
 setup(
