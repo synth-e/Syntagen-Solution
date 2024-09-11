@@ -37,7 +37,7 @@ setup(
     url="https://github.com/synth-e/synthlab",
     packages=find_packages(
         exclude=[], 
-        include=["cvprw2024_syntagen_teddybear"]
+        include=["cvprw2024_syntagen_teddybear", "cvprw2024_syntagen_teddybear.*"]
     ),
     python_requires=">=3.9",
     install_requires=dependencies,
