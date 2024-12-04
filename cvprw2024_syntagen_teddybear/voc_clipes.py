@@ -1,12 +1,11 @@
-from synthlab_core.atomic import TextualPrompt, IndexedFile, ImageWrapper, MaskWrapper
+from synthlab_core.atomic import TextualPrompt, ImageWrapper, MaskWrapper
 from synthlab_core.node import INode
 import numpy as np
 import structlog
 import torch
-from synthlab_core.utilities.data.label import VOC2012_CATEGORIES
 from synthlab_core.utilities.data import VOC2012_DATA_CONTEXT
 
-import _clip as clip
+from . import _clip as clip
 from ._clipes_utilities.misc import DenseCRF, ClipOutputTarget, scoremap2bbox
 from ._clipes_utilities.transforms import reshape_transform, img_ms_and_flip_v2
 from ._pytorch_grad_cam import GradCAM
