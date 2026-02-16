@@ -1,6 +1,6 @@
 # syntagen-sol
 
-This is our solution for the Syntagen Challenge. It is built on top of some research:
+This is our solution for the [Syntagen Challenge](https://syntagen.github.io/#:~:text=%2D%20mIoU%3A%2046.25-,SyntaGen%20Competition,-Dataset%20and%20metric). It is built on top of some research:
 - [CLIP-ES](https://arxiv.org/abs/2212.09506)
 - [CLIPSeg](https://arxiv.org/abs/2112.10003).
 - [Stable Diffusion 1.5](https://huggingface.co/runwayml/stable-diffusion-v1-5) 
