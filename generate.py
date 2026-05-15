@@ -1,10 +1,9 @@
-import nodes
+import cvprw2024_syntagen_teddybear
 from argparse import ArgumentParser
-from synthlab.registry import report, print_instruction_of, create as create_component, ClassType
+from synthlab_core.registry import report, print_instruction_of, create as create_component, ClassType
 import sys
 import yaml
 from tqdm import tqdm
-import importlib
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -31,7 +30,7 @@ def main():
         cfg["modules"],
         cfg["connections"],
         only_check=False,
-        visualize=None,
+        visualize='visualize.png',
     )
 
     logger.info("[Constructing pipeline] Done!")
